@@ -1,0 +1,133 @@
+// frontend/src/App.js
+import React, { useState } from 'react';
+import { ChatInterface } from './components/ChatInterface';
+import { Dashboard } from './components/Dashboard';
+import { Analysis } from './components/Analysis';
+
+function App() {
+  const [selectedView, setSelectedView] = useState('chat');
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <nav className="bg-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex justify-between">
+            <div className="flex space-x-7">
+              <div className="flex items-center py-4">
+                <span className="font-semibold text-gray-500 text-lg">
+                  Second Level Sage
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setSelectedView('chat')}
+                className={`py-2 px-4 rounded ${
+                  selectedView === 'chat' ? 'bg-blue-500 text-white' : ''
+                }`}
+              >
+                Chat
+              </button>
+              <button
+                onClick={() => setSelectedView('dashboard')}
+                className={`py-2 px-4 rounded ${
+                  selectedView === 'dashboard' ? 'bg-blue-500 text-white' : ''
+                }`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => setSelectedView('analysis')}
+                className={`py-2 px-4 rounded ${
+                  selectedView === 'analysis' ? 'bg-blue-500 text-white' : ''
+                }`}
+              >
+                Analysis
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {selectedView === 'chat' && <ChatInterface />}
+        {selectedView === 'dashboard' && <Dashboard />}
+        {selectedView === 'analysis' && <Analysis />}
+      </main>
+    </div>
+  );
+}
+
+export default App;
+
+// frontend/src/components/ChatInterface.js
+import React, { useState } from 'react';
+
+export const ChatInterface = () => {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+
+    try {
+      const response = await fetch('http://localhost:8000/api/chat/message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: input,
+          role: 'user'
+        }),
+      });
+
+      const data = await response.json();
+      setMessages([...messages, 
+        { content: input, role: 'user' },
+        { content: data.response, role: 'assistant' }
+      ]);
+      setInput('');
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-[600px] bg-white rounded-lg shadow">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((msg, idx) => (
+          <div key={idx} className={`flex ${
+            msg.role === 'user' ? 'justify-end' : 'justify-start'
+          }`}>
+            <div className={`max-w-[70%] rounded-lg p-3 ${
+              msg.role === 'user' 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-gray-100'
+            }`}>
+              {msg.content}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="border-t p-4">
+        <div className="flex space-x-4">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+            className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Ask Second Level Sage..."
+          />
+          <button
+            onClick={sendMessage}
+            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
