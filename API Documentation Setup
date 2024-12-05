@@ -1,0 +1,42 @@
+# backend/api/docs/main.py
+from fastapi.openapi.utils import get_openapi
+from backend.api.main import app
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+        
+    openapi_schema = get_openapi(
+        title="Second Level Sage API",
+        version="1.0.0",
+        description="AI-powered crypto market analysis based on Howard Marks' philosophy",
+        routes=app.routes,
+    )
+    
+    # Custom documentation schemas
+    openapi_schema["components"]["schemas"]["MarketAnalysis"] = {
+        "type": "object",
+        "properties": {
+            "sentiment": {"type": "string", "description": "Market sentiment analysis"},
+            "risk_level": {"type": "number", "description": "Current risk assessment"},
+            "opportunities": {"type": "array", "items": {"type": "string"}},
+            "warnings": {"type": "array", "items": {"type": "string"}}
+        }
+    }
+    
+    openapi_schema["components"]["schemas"]["ChatMessage"] = {
+        "type": "object",
+        "properties": {
+            "content": {"type": "string", "description": "Message content"},
+            "role": {"type": "string", "enum": ["user", "assistant"]},
+            "analysis": {
+                "type": "object",
+                "description": "Additional analysis context"
+            }
+        }
+    }
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
