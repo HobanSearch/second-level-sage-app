@@ -1,0 +1,128 @@
+# backend/api/models/base.py
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime, Float, JSON
+from datetime import datetime
+
+Base = declarative_base()
+
+# backend/api/models/user.py
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from .base import Base
+from datetime import datetime
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    subscription_tier = Column(String, default="basic")
+
+# backend/api/models/chat.py
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    start_time = Column(DateTime, default=datetime.utcnow)
+    end_time = Column(DateTime, nullable=True)
+    context = Column(JSON)
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, index=True)
+    content = Column(String)
+    role = Column(String)  # user or assistant
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    analysis = Column(JSON, nullable=True)
+
+# backend/api/models/analysis.py
+class MarketAnalysis(Base):
+    __tablename__ = "market_analysis"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    market_data = Column(JSON)
+    sentiment = Column(String)
+    risk_score = Column(Float)
+    analysis_results = Column(JSON)
+
+# alembic/env.py
+from logging.config import fileConfig
+from sqlalchemy import engine_from_config
+from sqlalchemy import pool
+from alembic import context
+from backend.api.models.base import Base
+
+config = context.config
+fileConfig(config.config_file_name)
+target_metadata = Base.metadata
+
+def run_migrations_online():
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+# alembic/versions/001_initial.py
+"""initial
+
+Revision ID: 001
+Revises: 
+Create Date: 2024-12-05
+
+"""
+from alembic import op
+import sqlalchemy as sa
+
+revision = '001'
+down_revision = None
+branch_labels = None
+depends_on = None
+
+def upgrade():
+    op.create_table(
+        'users',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('email', sa.String(), nullable=False),
+        sa.Column('hashed_password', sa.String(), nullable=False),
+        sa.Column('is_active', sa.Boolean(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.Column('subscription_tier', sa.String(), nullable=False),
+        sa.PrimaryKeyConstraint('id')
+    )
+
+    op.create_table(
+        'chat_sessions',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=False),
+        sa.Column('start_time', sa.DateTime(), nullable=False),
+        sa.Column('end_time', sa.DateTime()),
+        sa.Column('context', sa.JSON()),
+        sa.PrimaryKeyConstraint('id')
+    )
+
+    op.create_table(
+        'chat_messages',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('session_id', sa.Integer(), nullable=False),
+        sa.Column('content', sa.String(), nullable=False),
+        sa.Column('role', sa.String(), nullable=False),
+        sa.Column('timestamp', sa.DateTime(), nullable=False),
+        sa.Column('analysis', sa.JSON()),
+        sa.PrimaryKeyConstraint('id')
+    )
