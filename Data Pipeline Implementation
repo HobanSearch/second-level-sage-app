@@ -1,0 +1,120 @@
+# data_pipelines/collectors/market_data.py
+import aiohttp
+import asyncio
+from typing import Dict, List, Optional
+import pandas as pd
+from datetime import datetime, timedelta
+
+class MarketDataCollector:
+    def __init__(self):
+        self.base_urls = {
+            "coingecko": "https://api.coingecko.com/api/v3",
+            "defillama": "https://api.llama.fi",
+            "etherscan": "https://api.etherscan.io/api"
+        }
+        
+    async def collect_market_data(self) -> Dict:
+        """Collect market data from multiple sources"""
+        async with aiohttp.ClientSession() as session:
+            tasks = [
+                self.get_price_data(session),
+                self.get_volume_data(session),
+                self.get_defi_data(session)
+            ]
+            price_data, volume_data, defi_data = await asyncio.gather(*tasks)
+            
+            return {
+                "price_data": price_data,
+                "volume_data": volume_data,
+                "defi_data": defi_data
+            }
+            
+    async def get_price_data(self, session: aiohttp.ClientSession) -> pd.DataFrame:
+        """Fetch price data from multiple sources"""
+        async with session.get(
+            f"{self.base_urls['coingecko']}/simple/price",
+            params={
+                "ids": "bitcoin,ethereum",
+                "vs_currencies": "usd",
+                "include_24hr_change": "true"
+            }
+        ) as response:
+            return await response.json()
+            
+    async def get_volume_data(self, session: aiohttp.ClientSession) -> pd.DataFrame:
+        """Fetch trading volume data"""
+        async with session.get(
+            f"{self.base_urls['defillama']}/overview",
+        ) as response:
+            return await response.json()
+            
+    async def get_defi_data(self, session: aiohttp.ClientSession) -> pd.DataFrame:
+        """Fetch DeFi protocol data"""
+        async with session.get(
+            f"{self.base_urls['defillama']}/protocols"
+        ) as response:
+            return await response.json()
+
+# data_pipelines/processors/market_processor.py
+class MarketDataProcessor:
+    def __init__(self):
+        self.indicators = {
+            "trend": self._calculate_trend,
+            "volatility": self._calculate_volatility,
+            "momentum": self._calculate_momentum
+        }
+        
+    def process_market_data(self, raw_data: Dict) -> Dict:
+        """Process raw market data into analyzed format"""
+        try:
+            processed_data = {
+                "price_analysis": self._analyze_price_data(raw_data["price_data"]),
+                "volume_analysis": self._analyze_volume_data(raw_data["volume_data"]),
+                "defi_analysis": self._analyze_defi_data(raw_data["defi_data"])
+            }
+            
+            # Add technical indicators
+            for indicator, func in self.indicators.items():
+                processed_data[indicator] = func(raw_data)
+                
+            return processed_data
+        except Exception as e:
+            print(f"Error processing market data: {e}")
+            return {}
+            
+    def _analyze_price_data(self, price_data: Dict) -> Dict:
+        """Analyze price movements and patterns"""
+        return {
+            "price_change": self._calculate_price_change(price_data),
+            "price_trend": self._identify_trend(price_data),
+            "support_resistance": self._find_support_resistance(price_data)
+        }
+        
+    def _analyze_volume_data(self, volume_data: Dict) -> Dict:
+        """Analyze trading volume patterns"""
+        return {
+            "volume_trend": self._calculate_volume_trend(volume_data),
+            "volume_concentration": self._analyze_volume_concentration(volume_data)
+        }
+        
+    def _analyze_defi_data(self, defi_data: Dict) -> Dict:
+        """Analyze DeFi protocol metrics"""
+        return {
+            "tvl_analysis": self._analyze_tvl(defi_data),
+            "protocol_health": self._assess_protocol_health(defi_data)
+        }
+        
+    def _calculate_trend(self, data: Dict) -> str:
+        """Calculate market trend"""
+        # TODO: Implement trend calculation
+        return "neutral"
+        
+    def _calculate_volatility(self, data: Dict) -> float:
+        """Calculate market volatility"""
+        # TODO: Implement volatility calculation
+        return 0.5
+        
+    def _calculate_momentum(self, data: Dict) -> float:
+        """Calculate market momentum"""
+        # TODO: Implement momentum calculation
+        return 0.0
