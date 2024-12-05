@@ -1,0 +1,46 @@
+# requirements.txt
+tensorflow==2.15.0
+transformers==4.37.2
+torch==2.1.2
+scikit-learn==1.3.2
+pandas==2.1.4
+numpy==1.26.3
+beautifulsoup4==4.12.2
+aiohttp==3.9.1
+fastapi==0.109.0
+uvicorn==0.27.0.post1
+sqlalchemy==2.0.25
+alembic==1.13.1
+requests==2.31.0
+websockets==12.0
+python-dotenv==1.0.0
+pytest==7.4.4
+black==23.12.1
+
+# .env.example
+OPENAI_API_KEY=your_openai_api_key
+DATABASE_URL=postgresql://user:password@localhost:5432/sage_db
+BACKEND_URL=http://localhost:8000
+FRONTEND_URL=http://localhost:3000
+MODEL_PATH=models/trained/sage_model
+SECRET_KEY=your_secret_key
+
+# .gitignore
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+node_modules/
+.next/
+out/
+build/
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+data/raw/
+data/processed/
+models/trained/
+*.log
