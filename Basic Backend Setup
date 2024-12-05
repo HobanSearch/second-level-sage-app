@@ -1,0 +1,67 @@
+# backend/api/main.py
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from .routers import chat, analysis, data
+from .core.config import settings
+
+app = FastAPI(title="Second Level Sage API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+app.include_router(analysis.router, prefix="/api/analysis", tags=["analysis"])
+app.include_router(data.router, prefix="/api/data", tags=["data"])
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# backend/api/core/config.py
+from pydantic_settings import BaseSettings
+from typing import List
+
+class Settings(BaseSettings):
+    API_V1_STR: str = "/api/v1"
+    PROJECT_NAME: str = "Second Level Sage"
+    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
+    
+    class Config:
+        case_sensitive = True
+        env_file = ".env"
+
+settings = Settings()
+
+# backend/api/routers/chat.py
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+
+router = APIRouter()
+
+class ChatMessage(BaseModel):
+    content: str
+    role: str = "user"
+
+class ChatResponse(BaseModel):
+    response: str
+    confidence: float
+    analysis: Optional[dict] = None
+
+@router.post("/message", response_model=ChatResponse)
+async def process_message(message: ChatMessage):
+    try:
+        # TODO: Implement AI processing
+        return ChatResponse(
+            response="This is a test response",
+            confidence=0.95,
+            analysis={"market_sentiment": "neutral"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
