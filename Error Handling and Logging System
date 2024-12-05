@@ -1,0 +1,156 @@
+# backend/api/core/errors.py
+from fastapi import HTTPException, Request
+from fastapi.responses import JSONResponse
+import logging
+from datetime import datetime
+import traceback
+
+# Setup logging
+logging.basicConfig(
+    filename='app.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+class SageException(Exception):
+    def __init__(
+        self,
+        message: str,
+        error_code: str = None,
+        status_code: int = 500
+    ):
+        self.message = message
+        self.error_code = error_code
+        self.status_code = status_code
+        super().__init__(self.message)
+
+class ValidationError(SageException):
+    def __init__(self, message: str):
+        super().__init__(message, "VALIDATION_ERROR", 400)
+
+class AuthenticationError(SageException):
+    def __init__(self, message: str):
+        super().__init__(message, "AUTH_ERROR", 401)
+
+class AnalysisError(SageException):
+    def __init__(self, message: str):
+        super().__init__(message, "ANALYSIS_ERROR", 500)
+
+async def error_handler(request: Request, exc: Exception):
+    """Global error handler"""
+    timestamp = datetime.now().isoformat()
+    
+    if isinstance(exc, SageException):
+        error_response = {
+            "timestamp": timestamp,
+            "status": exc.status_code,
+            "error": exc.error_code,
+            "message": exc.message,
+            "path": request.url.path
+        }
+        logger.error(
+            f"Handled error: {exc.error_code} - {exc.message}",
+            extra={"path": request.url.path}
+        )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=error_response
+        )
+    
+    # Unexpected errors
+    error_detail = str(exc)
+    stack_trace = traceback.format_exc()
+    
+    logger.error(
+        f"Unhandled error: {error_detail}",
+        extra={
+            "path": request.url.path,
+            "stack_trace": stack_trace
+        }
+    )
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "timestamp": timestamp,
+            "status": 500,
+            "error": "Internal Server Error",
+            "message": "An unexpected error occurred",
+            "path": request.url.path
+        }
+    )
+
+# backend/api/core/logging.py
+import logging
+from datetime import datetime
+import json
+from typing import Dict, Any
+
+class CustomJsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        log_data = {
+            "timestamp": datetime.now().isoformat(),
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName
+        }
+        
+        # Add extra fields if available
+        if hasattr(record, "extra"):
+            log_data.update(record.extra)
+            
+        return json.dumps(log_data)
+
+def setup_logging():
+    """Configure application logging"""
+    # File handler for all logs
+    file_handler = logging.FileHandler('app.log')
+    file_handler.setFormatter(CustomJsonFormatter())
+    
+    # Console handler for development
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(CustomJsonFormatter())
+    
+    # Error file handler
+    error_handler = logging.FileHandler('error.log')
+    error_handler.setLevel(logging.ERROR)
+    error_handler.setFormatter(CustomJsonFormatter())
+    
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(error_handler)
+
+# Usage examples in other files:
+# backend/api/routers/analysis.py
+logger = logging.getLogger(__name__)
+
+@router.post("/analyze")
+async def analyze_market(request_data: Dict[str, Any]):
+    try:
+        logger.info(
+            "Starting market analysis",
+            extra={"request_data": request_data}
+        )
+        
+        result = await perform_analysis(request_data)
+        
+        logger.info(
+            "Analysis completed successfully",
+            extra={"analysis_id": result.id}
+        )
+        
+        return result
+    except Exception as e:
+        logger.error(
+            "Analysis failed",
+            extra={
+                "error": str(e),
+                "request_data": request_data
+            }
+        )
+        raise AnalysisError(f"Failed to analyze market: {str(e)}")
