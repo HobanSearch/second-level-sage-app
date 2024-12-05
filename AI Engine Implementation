@@ -1,0 +1,165 @@
+# ai_engine/inference/engine.py
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from typing import Dict, List, Optional
+import numpy as np
+import pandas as pd
+
+class SageEngine:
+    def __init__(self):
+        self.model = None
+        self.tokenizer = None
+        self.load_models()
+        
+    def load_models(self):
+        """Initialize models and tokenizers"""
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
+            self.model = AutoModelForCausalLM.from_pretrained("gpt2")
+        except Exception as e:
+            print(f"Error loading models: {e}")
+            
+    async def analyze_query(self, query: str) -> Dict:
+        """Analyze user query to determine intent and context"""
+        intent = self._determine_intent(query)
+        market_context = await self._get_market_context()
+        risk_factors = await self._analyze_risk_factors()
+        
+        return {
+            "intent": intent,
+            "market_context": market_context,
+            "risk_factors": risk_factors
+        }
+    
+    async def generate_response(self, query: str, analysis: Dict) -> Dict:
+        """Generate response based on analysis"""
+        try:
+            inputs = self.tokenizer(
+                self._format_prompt(query, analysis),
+                return_tensors="pt",
+                max_length=512,
+                truncation=True
+            )
+            
+            outputs = self.model.generate(
+                inputs["input_ids"],
+                max_length=200,
+                num_beams=5,
+                no_repeat_ngram_size=2,
+                temperature=0.7
+            )
+            
+            response = self.tokenizer.decode(outputs[0])
+            confidence = self._calculate_confidence(outputs)
+            
+            return {
+                "response": response,
+                "confidence": confidence,
+                "analysis": analysis
+            }
+        except Exception as e:
+            print(f"Error generating response: {e}")
+            return {
+                "response": "I apologize, but I'm having trouble processing that request.",
+                "confidence": 0.0,
+                "analysis": {}
+            }
+    
+    def _determine_intent(self, query: str) -> str:
+        """Determine the intent of the user's query"""
+        intents = {
+            "market_analysis": ["price", "trend", "market", "analysis"],
+            "risk_assessment": ["risk", "safety", "concern", "worried"],
+            "strategy": ["strategy", "plan", "approach", "should"],
+            "education": ["explain", "how", "what", "why"]
+        }
+        
+        query_lower = query.lower()
+        for intent, keywords in intents.items():
+            if any(keyword in query_lower for keyword in keywords):
+                return intent
+                
+        return "general"
+    
+    async def _get_market_context(self) -> Dict:
+        """Get current market context"""
+        # TODO: Implement real market data fetching
+        return {
+            "market_sentiment": "neutral",
+            "trend": "sideways",
+            "volatility": "moderate"
+        }
+    
+    async def _analyze_risk_factors(self) -> Dict:
+        """Analyze current risk factors"""
+        # TODO: Implement real risk analysis
+        return {
+            "market_risk": 0.5,
+            "technical_risk": 0.3,
+            "liquidity_risk": 0.4
+        }
+    
+    def _format_prompt(self, query: str, analysis: Dict) -> str:
+        """Format the prompt for the model"""
+        return f"""You are Second Level Sage, an AI assistant inspired by Howard Marks' investment philosophy.
+Current market context: {analysis['market_context']}
+Risk factors: {analysis['risk_factors']}
+User query: {query}
+Response:"""
+    
+    def _calculate_confidence(self, outputs) -> float:
+        """Calculate confidence score for the response"""
+        # TODO: Implement more sophisticated confidence calculation
+        return 0.85
+
+# ai_engine/inference/personality.py
+class SagePersonality:
+    def __init__(self):
+        self.traits = {
+            "style": "analytical",
+            "tone": "measured",
+            "perspective": "contrarian"
+        }
+        
+        self.response_templates = {
+            "market_analysis": """
+            From a second-level thinking perspective:
+            {analysis}
+            
+            Key considerations:
+            {considerations}
+            
+            What others might be missing:
+            {insights}
+            """,
+            
+            "risk_assessment": """
+            Let's think deeper about the risks:
+            
+            Primary risks:
+            {primary_risks}
+            
+            Hidden risks:
+            {hidden_risks}
+            
+            Mitigation strategies:
+            {strategies}
+            """,
+            
+            "education": """
+            Here's a thoughtful analysis:
+            
+            Core concept:
+            {concept}
+            
+            Deeper implications:
+            {implications}
+            
+            Practical application:
+            {application}
+            """
+        }
+        
+    def format_response(self, content: Dict, template_type: str) -> str:
+        """Format response according to personality traits"""
+        template = self.response_templates.get(template_type, "{content}")
+        return template.format(**content)
